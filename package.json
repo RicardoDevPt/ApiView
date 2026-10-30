@@ -1,0 +1,116 @@
+{
+  "name": "openapi-view",
+  "displayName": "openapi_view",
+  "description": "Visualize OpenAPI files: all endpoints and their fields.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "openapi_view.preview",
+        "title": "OpenAPI: Preview",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "openapi_view.reveal",
+        "title": "OpenAPI: Show in Preview"
+      },
+      {
+        "command": "openapi_view.goToSource",
+        "title": "Go to Source",
+        "icon": "$(go-to-file)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "openapi_view",
+          "title": "OpenAPI",
+          "icon": "media/sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "openapi_view": [
+        {
+          "id": "openapi_view.endpoints",
+          "name": "Endpoints"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "openapi_view.endpoints",
+        "contents": "Open an OpenAPI YAML/JSON file to list its endpoints.\n[Open Preview](command:openapi_view.preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "openapi_view.preview",
+          "when": "resourceLangId =~ /yaml|json/",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "openapi_view.preview",
+          "when": "resourceLangId =~ /yaml|json/"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "openapi_view.preview",
+          "when": "view == openapi_view.endpoints",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "openapi_view.goToSource",
+          "when": "view == openapi_view.endpoints && viewItem == operation",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "openapi_view.reveal",
+          "when": "false"
+        },
+        {
+          "command": "openapi_view.goToSource",
+          "when": "false"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node out/test.js",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/vscode": "1.85",
+    "@vscode/vsce": "^4.1.0",
+    "typescript": "^7.0.2"
+  },
+  "icon": "media/icon.png"
+}
