@@ -32,6 +32,11 @@
         "command": "openapi_view.goToSource",
         "title": "Go to Source",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "openapi_view.unfavorite",
+        "title": "Remove from Favorites",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -46,12 +51,20 @@
     "views": {
       "openapi_view": [
         {
+          "id": "openapi_view.favorites",
+          "name": "Favorites"
+        },
+        {
           "id": "openapi_view.endpoints",
           "name": "Endpoints"
         }
       ]
     },
     "viewsWelcome": [
+      {
+        "view": "openapi_view.favorites",
+        "contents": "Star a preview (☆ in its top-right corner) to pin it here."
+      },
       {
         "view": "openapi_view.endpoints",
         "contents": "Open an OpenAPI/AsyncAPI YAML/JSON file to list its endpoints or channels.\n[Open Preview](command:openapi_view.preview)"
@@ -83,6 +96,11 @@
           "command": "openapi_view.goToSource",
           "when": "view == openapi_view.endpoints && viewItem == operation",
           "group": "inline"
+        },
+        {
+          "command": "openapi_view.unfavorite",
+          "when": "view == openapi_view.favorites && viewItem == favorite",
+          "group": "inline"
         }
       ],
       "commandPalette": [
@@ -92,6 +110,10 @@
         },
         {
           "command": "openapi_view.goToSource",
+          "when": "false"
+        },
+        {
+          "command": "openapi_view.unfavorite",
           "when": "false"
         }
       ]

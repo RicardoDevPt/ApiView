@@ -95,6 +95,8 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(buildRequest('http://h', 'get', '/y', []).body, undefined, 'no body when nothing set');
 assert.ok(renderPage({ foo: 1 }, 'n').includes('Not an OpenAPI/AsyncAPI document'));
+assert.ok(renderPage(spec, 'n').includes('<button id="star" title="Add to favorites">☆</button>'), 'unstarred by default');
+assert.ok(renderPage(spec, 'n', '', true).includes('<button id="star" class="on" title="Remove from favorites">★</button>'), 'starred');
 
 // AsyncAPI: channels listed by topic, messages' payload schemas resolved, Subscribe form instead of Send.
 const asyncV3 = {

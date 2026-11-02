@@ -2,20 +2,22 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { parse } from 'yaml';
 import { defaultBroker, isAsyncApi } from './asyncapi';
+import { FavoritesProvider } from './favorites';
 import { MqttSessions } from './mqtt';
 import { renderError, renderPage } from './render';
 import { EndpointsProvider, OpNode } from './sidebar';
 
 const baseKey = (doc: vscode.TextDocument) => `baseUrl:${doc.uri.toString()}`;
+let favorites: FavoritesProvider;
 
 function build(doc: vscode.TextDocument, state: vscode.Memento): string {
     const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
     try {
         const spec = parse(doc.getText());
         const base = state.get<string>(baseKey(doc)) ?? (isAsyncApi(spec) ? defaultBroker(spec) : spec?.servers?.[0]?.url) ?? '';
-        return renderPage(spec, nonce, base);
+        return renderPage(spec, nonce, base, favorites.has(doc.uri.toString()));
     } catch (e) {
-        return renderError(e instanceof Error ? e.message : String(e), nonce);
+        return renderError(e instanceof Error ? e.message : String(e), nonce, favorites.has(doc.uri.toString()));
     }
 }
 
@@ -76,6 +78,7 @@ function showPreview(doc: vscode.TextDocument, state: vscode.Memento): void {
     });
     const messages = panel.webview.onDidReceiveMessage(async (m) => {
         if (typeof m?.setBase === 'string') await state.update(baseKey(doc), m.setBase);
+        if (m?.star) await favorites.toggle(key);
         if (m?.mqtt?.action === 'sub') mqtt.subscribe(m.mqtt.id, m.mqtt.broker, m.mqtt.topic);
         if (m?.mqtt?.action === 'unsub') mqtt.unsubscribe(m.mqtt.id);
         if (m?.send) {
@@ -100,8 +103,13 @@ function showPreview(doc: vscode.TextDocument, state: vscode.Memento): void {
 
 export function activate(context: vscode.ExtensionContext): void {
     const endpoints = new EndpointsProvider();
+    favorites = new FavoritesProvider(context.workspaceState);
     context.subscriptions.push(
         endpoints,
+        favorites,
+        // Keeps every open preview's star in sync, including unstars from the Favorites view.
+        favorites.onDidChangeTreeData(() => panels.forEach((p, uri) => p.webview.postMessage({ starred: favorites.has(uri) }))),
+        vscode.window.registerTreeDataProvider('openapi_view.favorites', favorites),
         vscode.window.registerTreeDataProvider('openapi_view.endpoints', endpoints),
         vscode.commands.registerCommand('openapi_view.preview', async (uri?: vscode.Uri) => {
             const doc = uri ? await vscode.workspace.openTextDocument(uri) : vscode.window.activeTextEditor?.document;
@@ -121,6 +129,7 @@ export function activate(context: vscode.ExtensionContext): void {
             pendingReveal.set(uri.toString(), id);
             showPreview(await vscode.workspace.openTextDocument(uri), context.globalState);
         }),
+        vscode.commands.registerCommand('openapi_view.unfavorite', (uri: string) => favorites.toggle(uri)),
         vscode.commands.registerCommand('openapi_view.goToSource', async (node: OpNode) => {
             const pos = new vscode.Position(node.line, 0);
             await vscode.window.showTextDocument(node.uri, { selection: new vscode.Range(pos, pos) });

@@ -180,12 +180,14 @@ export function renderSpec(spec: Obj, base = ''): { html: string; count: number 
     return { html: header + sections.join(''), count };
 }
 
-function page(body: string, nonce: string): string {
+function page(body: string, nonce: string, starred = false): string {
     return `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
 <style>
 body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 0 16px 32px; }
-header { position: sticky; top: 0; background: var(--vscode-editor-background); padding: 8px 0; z-index: 1; border-bottom: 1px solid var(--vscode-panel-border); }
+header { position: sticky; top: 0; background: var(--vscode-editor-background); padding: 8px 36px 8px 0; z-index: 1; border-bottom: 1px solid var(--vscode-panel-border); }
+#star { position: fixed; top: 10px; right: 16px; z-index: 2; background: none; padding: 0 4px; font-size: 20px; line-height: 1; color: var(--vscode-foreground); opacity: .6; }
+#star:hover { background: none; opacity: 1; } #star.on { color: var(--vscode-charts-yellow, #f5c518); opacity: 1; }
 h1 { margin: 8px 0; } h2 { margin: 24px 0 8px; }
 .toolbar { display: flex; gap: 6px; margin-top: 8px; }
 input { flex: 1; padding: 4px 6px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, transparent); }
@@ -232,6 +234,7 @@ form.mqtt input.topic { flex: 1; font-family: var(--vscode-editor-font-family); 
 pre.out { background: var(--vscode-textCodeBlock-background); padding: 8px; max-height: 400px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 pre.out.ok { border-left: 3px solid #27ae60; } pre.out.bad { border-left: 3px solid #c0392b; }
 </style></head><body>${body}
+<button id="star"${starred ? ' class="on" title="Remove from favorites">★' : ' title="Add to favorites">☆'}</button>
 <script nonce="${nonce}">
 const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
 const state = vscode?.getState() ?? { open: [], filter: '', scroll: 0 };
@@ -337,6 +340,12 @@ window.addEventListener('message', (e) => {
   if (e.data?.response) return showResponse(e.data.response);
   if (e.data?.mqttMsg) return showMqttMsg(e.data.mqttMsg);
   if (e.data?.mqttStatus) return showMqttStatus(e.data.mqttStatus);
+  if (typeof e.data?.starred === 'boolean') {
+    star.classList.toggle('on', e.data.starred);
+    star.textContent = e.data.starred ? '★' : '☆';
+    star.title = e.data.starred ? 'Remove from favorites' : 'Add to favorites';
+    return;
+  }
   const d = ops.find(o => o.dataset.id === e.data?.reveal);
   if (!d) return;
   if (d.classList.contains('hidden')) { filter.value = ''; apply(); }
@@ -347,18 +356,20 @@ window.addEventListener('message', (e) => {
   setTimeout(() => d.classList.remove('flash'), 1200);
   save();
 });
+const star = document.getElementById('star');
+star.onclick = () => vscode?.postMessage({ star: true });
 vscode?.postMessage({ ready: true });
 </script></body></html>`;
 }
 
-export function renderPage(spec: unknown, nonce: string, base = ''): string {
-    if (isAsyncApi(spec)) return page(renderAsyncSpec(spec, base).html, nonce);
+export function renderPage(spec: unknown, nonce: string, base = '', starred = false): string {
+    if (isAsyncApi(spec)) return page(renderAsyncSpec(spec, base).html, nonce, starred);
     if (!isOpenApi(spec)) {
-        return renderError('Not an OpenAPI/AsyncAPI document (no "openapi", "swagger", "asyncapi" or "paths" key).', nonce);
+        return renderError('Not an OpenAPI/AsyncAPI document (no "openapi", "swagger", "asyncapi" or "paths" key).', nonce, starred);
     }
-    return page(renderSpec(spec, base).html, nonce);
+    return page(renderSpec(spec, base).html, nonce, starred);
 }
 
-export function renderError(message: string, nonce: string): string {
-    return page(`<header><h1>OpenAPI View</h1></header><pre class="err">${esc(message)}</pre><input id="filter" class="hidden"><button id="expand" class="hidden"></button><button id="collapse" class="hidden"></button>`, nonce);
+export function renderError(message: string, nonce: string, starred = false): string {
+    return page(`<header><h1>OpenAPI View</h1></header><pre class="err">${esc(message)}</pre><input id="filter" class="hidden"><button id="expand" class="hidden"></button><button id="collapse" class="hidden"></button>`, nonce, starred);
 }

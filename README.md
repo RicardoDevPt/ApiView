@@ -12,6 +12,10 @@ The panel updates as you edit. Filter box matches method, path, summary, operati
 The **OpenAPI** activity-bar view (`{..}` icon) lists the active spec's endpoints by tag: click one
 to open it in the preview, or use the inline button to jump to its definition in the source.
 
+The ☆ in the preview's top-right corner stars the spec (it turns into a yellow ★). Starred specs are
+listed by file name in **Favorites** at the top of the same view (hover for the workspace-relative
+path); click one to open its preview, or use the inline ✕ to remove it. Favorites are per workspace.
+
 Each endpoint has a **Try it** section: parameters and the JSON body as a form prefilled with
 defaults/examples (dropdowns for enums and booleans, limits from the schema are validated), a base
 address and **Send**. The base address is remembered per spec file (initially `servers[0].url`).
