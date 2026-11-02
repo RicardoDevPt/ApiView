@@ -1,6 +1,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { parse } from 'yaml';
+import { defaultBroker, isAsyncApi } from './asyncapi';
+import { MqttSessions } from './mqtt';
 import { renderError, renderPage } from './render';
 import { EndpointsProvider, OpNode } from './sidebar';
 
@@ -10,7 +12,7 @@ function build(doc: vscode.TextDocument, state: vscode.Memento): string {
     const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
     try {
         const spec = parse(doc.getText());
-        const base = state.get<string>(baseKey(doc)) ?? spec?.servers?.[0]?.url ?? '';
+        const base = state.get<string>(baseKey(doc)) ?? (isAsyncApi(spec) ? defaultBroker(spec) : spec?.servers?.[0]?.url) ?? '';
         return renderPage(spec, nonce, base);
     } catch (e) {
         return renderError(e instanceof Error ? e.message : String(e), nonce);
@@ -54,10 +56,16 @@ function showPreview(doc: vscode.TextDocument, state: vscode.Memento): void {
         'openapi_view',
         `OpenAPI: ${path.basename(doc.fileName)}`,
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
-        { enableScripts: true },
+        // Hidden webviews are otherwise torn down, losing the live MQTT log and Subscribe button state.
+        { enableScripts: true, retainContextWhenHidden: true },
     );
     panels.set(key, panel);
-    const update = () => (panel.webview.html = build(doc, state));
+    const mqtt = new MqttSessions((msg) => panels.get(key) === panel && panel.webview.postMessage(msg));
+    // A re-render resets the Subscribe buttons, so drop the subscriptions they controlled.
+    const update = () => {
+        mqtt.dispose();
+        panel.webview.html = build(doc, state);
+    };
 
     // Debounced so typing in a large spec doesn't re-parse on every keystroke.
     let timer: NodeJS.Timeout | undefined;
@@ -68,6 +76,8 @@ function showPreview(doc: vscode.TextDocument, state: vscode.Memento): void {
     });
     const messages = panel.webview.onDidReceiveMessage(async (m) => {
         if (typeof m?.setBase === 'string') await state.update(baseKey(doc), m.setBase);
+        if (m?.mqtt?.action === 'sub') mqtt.subscribe(m.mqtt.id, m.mqtt.broker, m.mqtt.topic);
+        if (m?.mqtt?.action === 'unsub') mqtt.unsubscribe(m.mqtt.id);
         if (m?.send) {
             const response = await send(m.send);
             if (panels.get(key) === panel) panel.webview.postMessage({ response });
@@ -79,6 +89,7 @@ function showPreview(doc: vscode.TextDocument, state: vscode.Memento): void {
     });
     panel.onDidDispose(() => {
         clearTimeout(timer);
+        mqtt.dispose();
         sub.dispose();
         messages.dispose();
         panels.delete(key);
@@ -95,7 +106,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('openapi_view.preview', async (uri?: vscode.Uri) => {
             const doc = uri ? await vscode.workspace.openTextDocument(uri) : vscode.window.activeTextEditor?.document;
             if (!doc) {
-                vscode.window.showWarningMessage('Open an OpenAPI YAML/JSON file first.');
+                vscode.window.showWarningMessage('Open an OpenAPI/AsyncAPI YAML/JSON file first.');
                 return;
             }
             showPreview(doc, context.globalState);

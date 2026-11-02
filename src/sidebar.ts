@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Document, parseDocument } from 'yaml';
+import { isAsyncApi, listChannels } from './asyncapi';
 import { isOpenApi, listOperations, Operation } from './render';
 
 const METHOD_COLORS: Record<string, string> = {
@@ -8,6 +9,7 @@ const METHOD_COLORS: Record<string, string> = {
     put: 'charts.orange',
     patch: 'charts.purple',
     delete: 'charts.red',
+    mqtt: 'charts.yellow',
 };
 
 interface TagNode {
@@ -62,11 +64,10 @@ export class EndpointsProvider implements vscode.TreeDataProvider<Node>, vscode.
         const spec = yamlDoc.errors.length ? undefined : yamlDoc.toJS();
 
         const groups = new Map<string, OpNode[]>();
-        if (isOpenApi(spec)) {
-            for (const operation of listOperations(spec)) {
-                if (!groups.has(operation.tag)) groups.set(operation.tag, []);
-                groups.get(operation.tag)!.push({ kind: 'op', uri: doc.uri, operation, line: lineOf(yamlDoc, doc, operation) });
-            }
+        const ops = isAsyncApi(spec) ? listChannels(spec) : isOpenApi(spec) ? listOperations(spec) : [];
+        for (const operation of ops) {
+            if (!groups.has(operation.tag)) groups.set(operation.tag, []);
+            groups.get(operation.tag)!.push({ kind: 'op', uri: doc.uri, operation, line: lineOf(yamlDoc, doc, operation) });
         }
         this.tags = [...groups.entries()].map(([tag, ops]) => ({ kind: 'tag', tag, ops }));
         this.changed.fire();
@@ -85,7 +86,7 @@ export class EndpointsProvider implements vscode.TreeDataProvider<Node>, vscode.
         }
         const { method, path, op } = node.operation;
         const item = new vscode.TreeItem(`${method.toUpperCase()} ${path}`);
-        item.description = (op.deprecated ? '(deprecated) ' : '') + (op.summary ?? '');
+        item.description = (op.deprecated ? '(deprecated) ' : '') + (op.summary ?? (node.operation.key !== undefined ? op.description : undefined) ?? '');
         item.tooltip = [op.summary, op.operationId && `operationId: ${op.operationId}`].filter(Boolean).join('\n');
         const color = METHOD_COLORS[method];
         item.iconPath = new vscode.ThemeIcon('symbol-method', color ? new vscode.ThemeColor(color) : undefined);
@@ -101,7 +102,12 @@ export class EndpointsProvider implements vscode.TreeDataProvider<Node>, vscode.
     }
 }
 
-function lineOf(yamlDoc: Document, doc: vscode.TextDocument, { path, method }: Operation): number {
+function lineOf(yamlDoc: Document, doc: vscode.TextDocument, { path, method, key: channel }: Operation): number {
+    if (channel !== undefined) {
+        const node: any = yamlDoc.getIn(['channels'], true);
+        const k = node?.items?.find((pair: any) => pair.key?.value === channel)?.key;
+        return k?.range ? doc.positionAt(k.range[0]).line : 0;
+    }
     // Jump to the `method:` key rather than its value, which starts on the following line.
     const item: any = yamlDoc.getIn(['paths', path], true);
     const key = item?.items?.find((pair: any) => pair.key?.value === method)?.key ?? item;

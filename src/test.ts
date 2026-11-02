@@ -2,6 +2,8 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import { parse } from 'yaml';
+import { defaultBroker, listChannels, renderAsyncSpec, topicFilter } from './asyncapi';
+import { topicMatches } from './mqtt';
 import { listOperations, renderPage, renderSpec } from './render';
 import { buildRequest, exampleOf, renderTryIt } from './tryit';
 
@@ -92,11 +94,50 @@ assert.deepStrictEqual(
     { method: 'POST', url: 'http://h:1/api/x/a%20b?n=1&n=2', headers: { 'Content-Type': 'application/json' }, body: '{"mode":"fast","inner":{"on":true}}' },
 );
 assert.strictEqual(buildRequest('http://h', 'get', '/y', []).body, undefined, 'no body when nothing set');
-assert.ok(renderPage({ foo: 1 }, 'n').includes('Not an OpenAPI document'));
+assert.ok(renderPage({ foo: 1 }, 'n').includes('Not an OpenAPI/AsyncAPI document'));
+
+// AsyncAPI: channels listed by topic, messages' payload schemas resolved, Subscribe form instead of Send.
+const asyncV3 = {
+    asyncapi: '3.0.0',
+    info: { title: 'Events', version: '1' },
+    servers: { mqtt: { host: 'broker:1883', protocol: 'mqtt' } },
+    channels: {
+        Devices: { address: '/app/devices/{id}', description: 'device events', messages: { Opened: { $ref: '#/components/messages/Opened' } } },
+        Plain: { messages: {} },
+    },
+    components: { messages: { Opened: { payload: { type: 'object', properties: { value: { type: 'integer' } } } } } },
+};
+assert.deepStrictEqual(listChannels(asyncV3).map((c) => `${c.key} ${c.path}`), ['Devices /app/devices/{id}', 'Plain Plain']);
+const ahtml = renderAsyncSpec(asyncV3, 'mqtt://broker:1883').html;
+assert.ok(ahtml.includes('<form class="mqtt" data-id="mqtt /app/devices/{id}">') && ahtml.includes('value="/app/devices/+"'), 'subscribe form with wildcard topic');
+assert.ok(ahtml.includes('>value<') && !ahtml.includes('$ref'), 'message payload resolved');
+assert.ok(renderPage(asyncV3, 'n').includes('form class="mqtt"'), 'renderPage dispatches AsyncAPI');
+assert.strictEqual(defaultBroker(asyncV3), 'mqtt://broker:1883');
+assert.strictEqual(topicFilter('/a/{x}/b/{y}'), '/a/+/b/+');
+const asyncV2 = { asyncapi: '2.6.0', channels: { 'a/b': { subscribe: { message: { oneOf: [{ name: 'X', payload: { type: 'string' } }, { name: 'Y' }] } } } } };
+assert.deepStrictEqual(listChannels(asyncV2).map((c) => c.path), ['a/b']);
+assert.ok(renderAsyncSpec(asyncV2).html.includes('|msg:X') && renderAsyncSpec(asyncV2).html.includes('|msg:Y'), 'v2 oneOf messages');
+for (const [filter, topic, ok] of [
+    ['/app/x', '/app/x', true],
+    ['/app/+', '/app/x', true],
+    ['/app/+', '/app/x/y', false],
+    ['/app/#', '/app/x/y', true],
+    ['#', 'a', true],
+    ['/app/x', '/app/y', false],
+    ['a/b/c', 'a/b', false],
+] as const) assert.strictEqual(topicMatches(filter, topic), ok, `${filter} ~ ${topic}`);
 
 const file = process.argv[2];
 if (file) {
     const real = parse(fs.readFileSync(file, 'utf8'));
+    if (real.asyncapi) {
+        const out = renderAsyncSpec(real);
+        assert.strictEqual(out.count, Object.keys(real.channels ?? {}).length);
+        assert.ok(!out.html.includes('class="err">unresolved'), 'all refs resolved');
+        console.log(`${file}: ${out.count} channels, ${out.html.length} bytes`);
+        console.log('ok');
+        process.exit(0);
+    }
     const expected = Object.values<any>(real.paths ?? {}).reduce(
         (n, item) => n + Object.keys(item).filter((k) => ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'].includes(k)).length,
         0,

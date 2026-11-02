@@ -2,6 +2,8 @@
 
 VS Code extension that visualizes an OpenAPI (3.x / Swagger 2) YAML or JSON file: every endpoint,
 grouped by tag, with its parameters, request body and response schemas (`$ref`s resolved).
+AsyncAPI (2.x / 3.x) files are shown the same way, one entry per channel (MQTT topic) with its
+messages' headers and payload schemas.
 
 ## Use
 Open a spec file and run **OpenAPI: Preview** (command palette, editor title button, or right-click).
@@ -16,13 +18,21 @@ address and **Send**. The base address is remembered per spec file (initially `s
 Requests are sent by the extension host, so under Remote-SSH they leave from the remote machine
 (install the extension in the SSH host when VS Code offers). Form edits reset when the spec is edited.
 
+For AsyncAPI files each channel has a **Subscribe** section instead: a broker URL (`mqtt://`,
+`mqtts://`, `ws://`, `wss://`; initially from the first server, remembered per spec file), the topic
+(prefilled from the channel address, `{param}`s become `+`) and a **Subscribe / Unsubscribe**
+toggle. Received messages are listed newest first (JSON pretty-printed). Like HTTP requests, the
+MQTT connection runs in the extension host; subscriptions are dropped when the spec is edited or the
+preview is closed.
+
 ## Build
 ```bash
 npm install
 npm test            # compile + self-check
 npm run package     # produces openapi-view-<version>.vsix
-code --install-extension openapi-view-0.1.0.vsix
+code --install-extension openapi-view-0.2.0.vsix
 ```
 Press F5 in this folder to run it in an Extension Development Host.
 
-Limitations: only local `#/...` refs (no external files).
+Limitations: only local `#/...` refs (no external files); AsyncAPI is subscribe-only (no publish)
+and message `traits` are not merged into the shown headers.

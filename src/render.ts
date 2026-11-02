@@ -1,3 +1,4 @@
+import { isAsyncApi, renderAsyncSpec } from './asyncapi';
 import { buildRequest, renderTryIt } from './tryit';
 
 type Obj = Record<string, any>;
@@ -21,7 +22,7 @@ export function resolve(root: Obj, ref: string): any {
 }
 
 /** Follows a `$ref` chain for non-schema objects (parameters, responses, request bodies). */
-function deref(node: any, root: Obj): any {
+export function deref(node: any, root: Obj): any {
     for (let i = 0; i < 10 && node?.$ref; i++) node = resolve(root, node.$ref);
     return node ?? {};
 }
@@ -132,6 +133,8 @@ export interface Operation {
     path: string;
     op: Obj;
     pathParams: any[];
+    /** AsyncAPI channel name (the `channels` key); `path` is then the topic. */
+    key?: string;
 }
 
 export function listOperations(spec: Obj): Operation[] {
@@ -199,7 +202,7 @@ details.part > div { padding-left: 16px; }
 .body { padding: 4px 12px 12px; border-top: 1px solid var(--vscode-panel-border); }
 .method { font-weight: bold; color: #fff; border-radius: 3px; padding: 1px 6px; min-width: 52px; text-align: center; font-size: .85em; }
 .m-get { background: #2f80ed; } .m-post { background: #27ae60; } .m-put { background: #e67e22; } .m-patch { background: #16a085; }
-.m-delete { background: #c0392b; } .m-head, .m-options, .m-trace { background: #7f8c8d; }
+.m-delete { background: #c0392b; } .m-head, .m-options, .m-trace { background: #7f8c8d; } .m-mqtt { background: #8e44ad; }
 .path { font-family: var(--vscode-editor-font-family); font-weight: bold; }
 .summary, .muted { opacity: .7; }
 .desc { opacity: .85; margin: 2px 0; white-space: pre-wrap; }
@@ -218,13 +221,14 @@ table { border-collapse: collapse; width: 100%; } th, td { text-align: left; ver
 .hidden { display: none; }
 .flash { outline: 2px solid var(--vscode-focusBorder); }
 select, textarea { color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, transparent); padding: 3px 5px; }
-form.tryit .grp { font-weight: bold; opacity: .8; margin: 8px 0 2px; }
+.grp { font-weight: bold; opacity: .8; margin: 8px 0 2px; }
 form.tryit fieldset { border: 1px solid var(--vscode-panel-border); margin: 4px 0; padding: 2px 8px 4px; }
 .fld { display: grid; grid-template-columns: minmax(140px, 30%) 1fr; gap: 8px; align-items: start; margin: 3px 0; }
 .fld input, .fld select, .fld textarea, textarea.raw { width: 100%; box-sizing: border-box; font-family: var(--vscode-editor-font-family); }
 form.tryit :invalid { border-color: var(--vscode-inputValidation-errorBorder, #be1100); }
 .send { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
 .send code { white-space: nowrap; opacity: .8; }
+form.mqtt input.topic { flex: 1; font-family: var(--vscode-editor-font-family); }
 pre.out { background: var(--vscode-textCodeBlock-background); padding: 8px; max-height: 400px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 pre.out.ok { border-left: 3px solid #27ae60; } pre.out.bad { border-left: 3px solid #c0392b; }
 </style></head><body>${body}
@@ -290,8 +294,49 @@ const showResponse = (r) => {
   out.className = 'out ' + (r.status < 400 ? 'ok' : 'bad');
   out.textContent = r.status + ' ' + r.statusText + ' · ' + r.ms + ' ms\\n\\n' + text;
 };
+const mqttForms = [...document.querySelectorAll('form.mqtt')];
+const MAX_LOG = 200;
+mqttForms.forEach(form => form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const btn = form.querySelector('button'), out = form.querySelector('.out');
+  if (form.dataset.subscribed) {
+    delete form.dataset.subscribed;
+    btn.textContent = 'Subscribe';
+    vscode?.postMessage({ mqtt: { action: 'unsub', id: form.dataset.id } });
+    return;
+  }
+  form.dataset.subscribed = '1';
+  btn.textContent = 'Unsubscribe';
+  out.className = 'out';
+  out.textContent = 'Connecting…';
+  vscode?.postMessage({ mqtt: { action: 'sub', id: form.dataset.id, broker: form.querySelector('.base').value.trim(), topic: form.querySelector('.topic').value.trim() } });
+}));
+const mqttOut = (id) => mqttForms.find(f => f.dataset.id === id)?.querySelector('.out');
+const showMqttMsg = (m) => {
+  const out = mqttOut(m.id);
+  if (!out) return;
+  let text = m.payload;
+  try { text = JSON.stringify(JSON.parse(m.payload), null, 2); } catch {}
+  const entry = document.createElement('div');
+  entry.textContent = new Date(m.ts).toLocaleTimeString() + '  ' + m.topic + '\\n' + text + '\\n';
+  out.className = 'out ok';
+  out.prepend(entry);
+  while (out.children.length > MAX_LOG) out.lastChild.remove();
+};
+const showMqttStatus = (s) => {
+  const out = mqttOut(s.id);
+  if (!out) return;
+  if (s.error) {
+    const form = out.closest('form');
+    delete form.dataset.subscribed;
+    form.querySelector('button').textContent = 'Subscribe';
+    out.className = 'out bad'; out.textContent = 'MQTT error: ' + s.error;
+  } else { out.className = 'out ok'; out.textContent = s.text + '\\nWaiting for messages…'; }
+};
 window.addEventListener('message', (e) => {
   if (e.data?.response) return showResponse(e.data.response);
+  if (e.data?.mqttMsg) return showMqttMsg(e.data.mqttMsg);
+  if (e.data?.mqttStatus) return showMqttStatus(e.data.mqttStatus);
   const d = ops.find(o => o.dataset.id === e.data?.reveal);
   if (!d) return;
   if (d.classList.contains('hidden')) { filter.value = ''; apply(); }
@@ -307,8 +352,9 @@ vscode?.postMessage({ ready: true });
 }
 
 export function renderPage(spec: unknown, nonce: string, base = ''): string {
+    if (isAsyncApi(spec)) return page(renderAsyncSpec(spec, base).html, nonce);
     if (!isOpenApi(spec)) {
-        return renderError('Not an OpenAPI document (no "openapi", "swagger" or "paths" key).', nonce);
+        return renderError('Not an OpenAPI/AsyncAPI document (no "openapi", "swagger", "asyncapi" or "paths" key).', nonce);
     }
     return page(renderSpec(spec, base).html, nonce);
 }
