@@ -40,9 +40,15 @@ preview is closed.
 npm install
 npm test            # compile + self-check
 npm run package     # produces apiview-<version>.vsix
-code --install-extension apiview-0.2.0.vsix
+code --install-extension apiview-0.2.1.vsix
 ```
 Press F5 in this folder to run it in an Extension Development Host.
 
 Limitations: only local `#/...` refs (no external files); AsyncAPI is subscribe-only (no publish)
 and message `traits` are not merged into the shown headers.
+
+## Bump version
+
+```bash
+npm version <new version>
+```
