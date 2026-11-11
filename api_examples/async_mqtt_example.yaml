@@ -1,0 +1,209 @@
+
+asyncapi: 3.0.0
+
+info:
+  title: Mosquitto IoT MQTT API
+  version: 1.0.0
+  description: >
+    Example AsyncAPI specification for an IoT application
+    using MQTT and Eclipse Mosquitto.
+
+servers:
+  mosquitto:
+    host: localhost:1883
+    protocol: mqtt
+    description: Local Eclipse Mosquitto broker
+    protocolVersion: '5.0'
+
+defaultContentType: application/json
+
+channels:
+
+  temperature:
+    address: sensors/temperature
+    messages:
+      temperatureMessage:
+        $ref: '#/components/messages/TemperatureMessage'
+
+  humidity:
+    address: sensors/humidity
+    messages:
+      humidityMessage:
+        $ref: '#/components/messages/HumidityMessage'
+
+  deviceStatus:
+    address: devices/{deviceId}/status
+    messages:
+      statusMessage:
+        $ref: '#/components/messages/DeviceStatusMessage'
+    parameters:
+      deviceId:
+        description: Unique device identifier
+        schema:
+          type: string
+        examples:
+          - sensor-001
+
+  deviceCommands:
+    address: devices/{deviceId}/commands
+    parameters:
+      deviceId:
+        description: Target device identifier
+        schema:
+          type: string
+    messages:
+      commandMessage:
+        $ref: '#/components/messages/DeviceCommandMessage'
+
+operations:
+
+  receiveTemperature:
+    action: receive
+    channel:
+      $ref: '#/channels/temperature'
+    summary: Receive temperature measurements
+
+  receiveHumidity:
+    action: receive
+    channel:
+      $ref: '#/channels/humidity'
+    summary: Receive humidity measurements
+
+  receiveDeviceStatus:
+    action: receive
+    channel:
+      $ref: '#/channels/deviceStatus'
+    summary: Receive device status updates
+
+  sendDeviceCommand:
+    action: send
+    channel:
+      $ref: '#/channels/deviceCommands'
+    summary: Send commands to IoT devices
+
+components:
+
+  messages:
+
+    TemperatureMessage:
+      name: TemperatureMessage
+      title: Temperature Reading
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/Temperature'
+
+    HumidityMessage:
+      name: HumidityMessage
+      title: Humidity Reading
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/Humidity'
+
+    DeviceStatusMessage:
+      name: DeviceStatusMessage
+      title: Device Status
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceStatus'
+
+    DeviceCommandMessage:
+      name: DeviceCommandMessage
+      title: Device Command
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceCommand'
+
+  schemas:
+
+    Temperature:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          example: sensor-001
+        temperature:
+          type: number
+          format: float
+          example: 23.5
+        unit:
+          type: string
+          enum:
+            - Celsius
+            - Fahrenheit
+          example: Celsius
+        timestamp:
+          type: string
+          format: date-time
+          example: '2026-11-11T14:30:00Z'
+      required:
+        - deviceId
+        - temperature
+        - timestamp
+
+    Humidity:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          example: sensor-001
+        humidity:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 65.2
+        unit:
+          type: string
+          example: percent
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - deviceId
+        - humidity
+        - timestamp
+
+    DeviceStatus:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          example: sensor-001
+        status:
+          type: string
+          enum:
+            - online
+            - offline
+            - error
+          example: online
+        battery:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 87
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - deviceId
+        - status
+        - timestamp
+
+    DeviceCommand:
+      type: object
+      properties:
+        command:
+          type: string
+          enum:
+            - restart
+            - turn_on
+            - turn_off
+          example: restart
+        requestedBy:
+          type: string
+          example: admin
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - command
+        - timestamp

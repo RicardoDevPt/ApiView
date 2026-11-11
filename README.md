@@ -29,6 +29,12 @@ toggle. Received messages are listed newest first (JSON pretty-printed). Like HT
 MQTT connection runs in the extension host; subscriptions are dropped when the spec is edited or the
 preview is closed.
 
+## Examples
+
+![ApiView example 1](media/ApiView_1.png)
+
+![ApiView example 2](media/ApiView_2.png)
+
 ## Build
 ```bash
 npm install

@@ -1,0 +1,350 @@
+
+openapi: 3.0.3
+
+info:
+  title: Task Management API
+  description: Example REST API for managing users and tasks.
+  version: 1.0.0
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+tags:
+  - name: Users
+    description: User management
+  - name: Tasks
+    description: Task management
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+              example:
+                - id: 1
+                  name: John Doe
+                  email: john@example.com
+                - id: 2
+                  name: Jane Smith
+                  email: jane@example.com
+
+    post:
+      tags:
+        - Users
+      summary: Create a user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+            example:
+              name: John Doe
+              email: john@example.com
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid request
+
+  /users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get a user by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+    put:
+      tags:
+        - Users
+      summary: Update a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+      responses:
+        '200':
+          description: User updated
+        '404':
+          description: User not found
+
+    delete:
+      tags:
+        - Users
+      summary: Delete a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          description: User not found
+
+  /tasks:
+    get:
+      tags:
+        - Tasks
+      summary: Get all tasks
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - pending
+              - in_progress
+              - completed
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+              example:
+                - id: 101
+                  title: Build API
+                  description: Create REST endpoints
+                  status: in_progress
+                  userId: 1
+                - id: 102
+                  title: Write documentation
+                  description: Document API endpoints
+                  status: pending
+                  userId: 2
+
+    post:
+      tags:
+        - Tasks
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+            example:
+              title: Build API
+              description: Create REST endpoints
+              status: pending
+              userId: 1
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid request
+
+  /tasks/{taskId}:
+    get:
+      tags:
+        - Tasks
+      summary: Get a task by ID
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Task not found
+
+    patch:
+      tags:
+        - Tasks
+      summary: Partially update a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - in_progress
+                    - completed
+      responses:
+        '200':
+          description: Task updated
+        '404':
+          description: Task not found
+
+    delete:
+      tags:
+        - Tasks
+      summary: Delete a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Task deleted
+        '404':
+          description: Task not found
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+      required:
+        - id
+        - name
+        - email
+
+    CreateUser:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+        - name
+        - email
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+        userId:
+          type: integer
+      required:
+        - id
+        - title
+        - status
+        - userId
+
+    CreateTask:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+          default: pending
+        userId:
+          type: integer
+      required:
+        - title
+        - userId
