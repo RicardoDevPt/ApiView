@@ -18,6 +18,10 @@
     "workspace"
   ],
   "activationEvents": [],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RicardoDevPt/ApiView.git"
+  },
   "contributes": {
     "commands": [
       {
