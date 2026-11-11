@@ -55,8 +55,8 @@ function showPreview(doc: vscode.TextDocument, state: vscode.Memento): void {
     }
 
     const panel = vscode.window.createWebviewPanel(
-        'openapi_view',
-        `OpenAPI: ${path.basename(doc.fileName)}`,
+        'apiview',
+        `ApiView: ${path.basename(doc.fileName)}`,
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         // Hidden webviews are otherwise torn down, losing the live MQTT log and Subscribe button state.
         { enableScripts: true, retainContextWhenHidden: true },
@@ -109,9 +109,9 @@ export function activate(context: vscode.ExtensionContext): void {
         favorites,
         // Keeps every open preview's star in sync, including unstars from the Favorites view.
         favorites.onDidChangeTreeData(() => panels.forEach((p, uri) => p.webview.postMessage({ starred: favorites.has(uri) }))),
-        vscode.window.registerTreeDataProvider('openapi_view.favorites', favorites),
-        vscode.window.registerTreeDataProvider('openapi_view.endpoints', endpoints),
-        vscode.commands.registerCommand('openapi_view.preview', async (uri?: vscode.Uri) => {
+        vscode.window.registerTreeDataProvider('apiview.favorites', favorites),
+        vscode.window.registerTreeDataProvider('apiview.endpoints', endpoints),
+        vscode.commands.registerCommand('apiview.preview', async (uri?: vscode.Uri) => {
             const doc = uri ? await vscode.workspace.openTextDocument(uri) : vscode.window.activeTextEditor?.document;
             if (!doc) {
                 vscode.window.showWarningMessage('Open an OpenAPI/AsyncAPI YAML/JSON file first.');
@@ -119,7 +119,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
             showPreview(doc, context.globalState);
         }),
-        vscode.commands.registerCommand('openapi_view.reveal', async (uri: vscode.Uri, id: string) => {
+        vscode.commands.registerCommand('apiview.reveal', async (uri: vscode.Uri, id: string) => {
             const existing = panels.get(uri.toString());
             if (existing) {
                 existing.reveal(undefined, true);
@@ -129,8 +129,8 @@ export function activate(context: vscode.ExtensionContext): void {
             pendingReveal.set(uri.toString(), id);
             showPreview(await vscode.workspace.openTextDocument(uri), context.globalState);
         }),
-        vscode.commands.registerCommand('openapi_view.unfavorite', (uri: string) => favorites.toggle(uri)),
-        vscode.commands.registerCommand('openapi_view.goToSource', async (node: OpNode) => {
+        vscode.commands.registerCommand('apiview.unfavorite', (uri: string) => favorites.toggle(uri)),
+        vscode.commands.registerCommand('apiview.goToSource', async (node: OpNode) => {
             const pos = new vscode.Position(node.line, 0);
             await vscode.window.showTextDocument(node.uri, { selection: new vscode.Range(pos, pos) });
         }),

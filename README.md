@@ -1,4 +1,4 @@
-# openapi_view
+# ApiView
 
 VS Code extension that visualizes an OpenAPI (3.x / Swagger 2) YAML or JSON file: every endpoint,
 grouped by tag, with its parameters, request body and response schemas (`$ref`s resolved).
@@ -6,10 +6,10 @@ AsyncAPI (2.x / 3.x) files are shown the same way, one entry per channel (MQTT t
 messages' headers and payload schemas.
 
 ## Use
-Open a spec file and run **OpenAPI: Preview** (command palette, editor title button, or right-click).
+Open a spec file and run **ApiView: Preview** (command palette, editor title button, or right-click).
 The panel updates as you edit. Filter box matches method, path, summary, operationId and tag.
 
-The **OpenAPI** activity-bar view (`{..}` icon) lists the active spec's endpoints by tag: click one
+The **ApiView** activity-bar view (`{..}` icon) lists the active spec's endpoints by tag: click one
 to open it in the preview, or use the inline button to jump to its definition in the source.
 
 The ☆ in the preview's top-right corner stars the spec (it turns into a yellow ★). Starred specs are
@@ -33,8 +33,8 @@ preview is closed.
 ```bash
 npm install
 npm test            # compile + self-check
-npm run package     # produces openapi-view-<version>.vsix
-code --install-extension openapi-view-0.2.0.vsix
+npm run package     # produces apiview-<version>.vsix
+code --install-extension apiview-0.2.0.vsix
 ```
 Press F5 in this folder to run it in an Extension Development Host.
 

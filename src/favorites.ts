@@ -34,7 +34,7 @@ export class FavoritesProvider implements vscode.TreeDataProvider<string>, vscod
         item.resourceUri = uri;
         item.tooltip = vscode.workspace.asRelativePath(uri);
         item.contextValue = 'favorite';
-        item.command = { command: 'openapi_view.preview', title: 'Open Preview', arguments: [uri] };
+        item.command = { command: 'apiview.preview', title: 'Open Preview', arguments: [uri] };
         return item;
     }
 

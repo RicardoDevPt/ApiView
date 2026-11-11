@@ -1,12 +1,13 @@
 {
-  "name": "openapi-view",
-  "displayName": "openapi_view",
+  "name": "apiview",
+  "displayName": "ApiView",
   "description": "Visualize OpenAPI and AsyncAPI files: all endpoints/channels and their fields.",
   "version": "0.2.0",
   "publisher": "local",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.85.0",
+    "node": ">=22"
   },
   "categories": [
     "Visualization",
@@ -20,21 +21,21 @@
   "contributes": {
     "commands": [
       {
-        "command": "openapi_view.preview",
-        "title": "OpenAPI: Preview",
+        "command": "apiview.preview",
+        "title": "ApiView: Preview",
         "icon": "$(preview)"
       },
       {
-        "command": "openapi_view.reveal",
-        "title": "OpenAPI: Show in Preview"
+        "command": "apiview.reveal",
+        "title": "ApiView: Show in Preview"
       },
       {
-        "command": "openapi_view.goToSource",
+        "command": "apiview.goToSource",
         "title": "Go to Source",
         "icon": "$(go-to-file)"
       },
       {
-        "command": "openapi_view.unfavorite",
+        "command": "apiview.unfavorite",
         "title": "Remove from Favorites",
         "icon": "$(close)"
       }
@@ -42,78 +43,78 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "openapi_view",
-          "title": "OpenAPI",
+          "id": "apiview",
+          "title": "ApiView",
           "icon": "media/sidebar.svg"
         }
       ]
     },
     "views": {
-      "openapi_view": [
+      "apiview": [
         {
-          "id": "openapi_view.favorites",
+          "id": "apiview.favorites",
           "name": "Favorites"
         },
         {
-          "id": "openapi_view.endpoints",
+          "id": "apiview.endpoints",
           "name": "Endpoints"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "openapi_view.favorites",
+        "view": "apiview.favorites",
         "contents": "Star a preview (☆ in its top-right corner) to pin it here."
       },
       {
-        "view": "openapi_view.endpoints",
-        "contents": "Open an OpenAPI/AsyncAPI YAML/JSON file to list its endpoints or channels.\n[Open Preview](command:openapi_view.preview)"
+        "view": "apiview.endpoints",
+        "contents": "Open an OpenAPI/AsyncAPI YAML/JSON file to list its endpoints or channels.\n[Open Preview](command:apiview.preview)"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "openapi_view.preview",
+          "command": "apiview.preview",
           "when": "resourceLangId =~ /yaml|json/",
           "group": "navigation"
         }
       ],
       "editor/context": [
         {
-          "command": "openapi_view.preview",
+          "command": "apiview.preview",
           "when": "resourceLangId =~ /yaml|json/"
         }
       ],
       "view/title": [
         {
-          "command": "openapi_view.preview",
-          "when": "view == openapi_view.endpoints",
+          "command": "apiview.preview",
+          "when": "view == apiview.endpoints",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "openapi_view.goToSource",
-          "when": "view == openapi_view.endpoints && viewItem == operation",
+          "command": "apiview.goToSource",
+          "when": "view == apiview.endpoints && viewItem == operation",
           "group": "inline"
         },
         {
-          "command": "openapi_view.unfavorite",
-          "when": "view == openapi_view.favorites && viewItem == favorite",
+          "command": "apiview.unfavorite",
+          "when": "view == apiview.favorites && viewItem == favorite",
           "group": "inline"
         }
       ],
       "commandPalette": [
         {
-          "command": "openapi_view.reveal",
+          "command": "apiview.reveal",
           "when": "false"
         },
         {
-          "command": "openapi_view.goToSource",
+          "command": "apiview.goToSource",
           "when": "false"
         },
         {
-          "command": "openapi_view.unfavorite",
+          "command": "apiview.unfavorite",
           "when": "false"
         }
       ]
@@ -123,7 +124,8 @@
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node out/test.js",
-    "package": "vsce package --allow-missing-repository"
+    "package": "vsce package --allow-missing-repository",
+    "preinstall": "node -e \"if (Number(process.versions.node.split('.')[0]) < 22) { console.error('Node.js 22 or newer is required. Run: nvm install 22 && nvm use 22'); process.exit(1); }\""
   },
   "dependencies": {
     "mqtt": "^5.16.1",

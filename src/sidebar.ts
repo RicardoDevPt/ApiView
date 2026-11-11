@@ -91,7 +91,7 @@ export class EndpointsProvider implements vscode.TreeDataProvider<Node>, vscode.
         const color = METHOD_COLORS[method];
         item.iconPath = new vscode.ThemeIcon('symbol-method', color ? new vscode.ThemeColor(color) : undefined);
         item.contextValue = 'operation';
-        item.command = { command: 'openapi_view.reveal', title: 'Show in Preview', arguments: [node.uri, `${method} ${path}`] };
+        item.command = { command: 'apiview.reveal', title: 'Show in Preview', arguments: [node.uri, `${method} ${path}`] };
         return item;
     }
 
