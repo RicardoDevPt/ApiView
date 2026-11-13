@@ -2,7 +2,7 @@
   "name": "apiview",
   "displayName": "ApiView",
   "description": "Visualize OpenAPI and AsyncAPI files: all endpoints/channels and their fields.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "RicardoDevPt",
   "license": "MIT",
   "engines": {
