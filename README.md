@@ -40,7 +40,7 @@ preview is closed.
 npm install
 npm test            # compile + self-check
 npm run package     # produces apiview-<version>.vsix
-code --install-extension apiview-0.2.1.vsix
+code --install-extension apiview-0.2.2.vsix
 ```
 Press F5 in this folder to run it in an Extension Development Host.
 
@@ -50,5 +50,12 @@ and message `traits` are not merged into the shown headers.
 ## Bump version
 
 ```bash
+# Bug fixes, small changes
+npm version patch
+# New features
+npm version minor
+# Breaking changes
+npm version major
+# Custom
 npm version <new version>
 ```
